@@ -3,11 +3,17 @@ const axios = require("axios");
 const bodyParser = require("body-parser");
 const { addUser, listUsers } = require("./sheets");
 const app = express();
+const { clearAllSheets } = require("./sheets");
 
 app.use(bodyParser.json());
 
 const LINE_TOKEN = process.env.LINE_TOKEN;
 const ALLOWED_GROUP_ID = process.env.ALLOWED_GROUP_ID;
+
+app.get("/clear", async (req, res) => {
+  await clearAllSheets();
+  res.send("清空完成 ✅");
+});
 
 // LINE 回覆訊息
 async function replyToLine(replyToken, msg) {

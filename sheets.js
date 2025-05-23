@@ -42,4 +42,11 @@ async function clearSheet(sheetName) {
   });
 }
 
+async function clearAllSheets() {
+  await clearSheet("國戰");
+  await clearSheet("請假");
+  console.log("✅ 已清空所有名單！");
+}
+
+
 module.exports = { addUser, listUsers, clearSheet };
