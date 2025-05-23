@@ -45,42 +45,43 @@ async function handleEvent(event) {
 
   let replyMsg = "";
 
+  // 國戰+1 ~ +12：單筆寫入 Leo(N)，防重複
   if (/^國戰\+\d+$/.test(message.text)) {
     const match = message.text.match(/^國戰\+(\d+)$/);
     const count = parseInt(match[1], 10);
 
-    if (count >= 1 && count <= 12) {
-      const formattedName = count === 1 ? nameToSave : `${nameToSave}(${count})`;
+    if (count < 1 || count > 12) {
+      replyMsg = "⚠️ 報名數量需介於 1~12 之間";
+    } else if (nameResult.error) {
+      replyMsg = nameToShow; // 顯示暱稱失敗提示
+    } else {
+      const formattedName = `${nameToSave}(${count})`;
+
       const warList = await listUsers("國戰");
+      const leaveList = await listUsers("請假");
 
       if (warList.includes(formattedName)) {
-        replyMsg = `⚠️ ${formattedName} 已報名過`;
+        replyMsg = `⚠️ ${formattedName} 已在國戰名單中`;
+      } else if (leaveList.includes(formattedName)) {
+        replyMsg = `⚠️ ${formattedName} 已在請假名單中`;
       } else {
         const result = await addUser("國戰", formattedName);
         replyMsg = result.success
           ? `✅ ${nameToShow} 已加入國戰（共 ${count} 名）`
           : `⚠️ ${nameToShow} ${result.reason}`;
       }
-    } else {
-      replyMsg = "⚠️ 報名數量需介於 1~12 之間";
     }
   } else {
     switch (message.text) {
       case "請假+1": {
+        if (nameResult.error) {
+          replyMsg = nameToShow;
+          break;
+        }
         const result = await addUser("請假", nameToSave);
         replyMsg = result.success
           ? `✅ ${nameToShow} 已請假`
           : `⚠️ ${nameToShow} ${result.reason}`;
-        break;
-      }
-      case "國戰名單": {
-        const warList = await listUsers("國戰");
-        const leaveList = await listUsers("請假");
-        replyMsg = `📋 國戰名單\n\n🟩 國戰+1：\n${warList.map(n => "🔸 " + n).join("\n") || "（無）"}\n\n🟨 請假+1：\n${leaveList.map(n => "🔸 " + n).join("\n") || "（無）"}`;
-        break;
-      }
-      case "查ID": {
-        replyMsg = `👁️ 群組 ID：${groupId}`;
         break;
       }
       case "國戰取消": {
@@ -95,6 +96,16 @@ async function handleEvent(event) {
         replyMsg = removed
           ? `🗑️ ${nameToShow} 的請假紀錄已取消`
           : `⚠️ ${nameToShow} 沒有在請假名單中`;
+        break;
+      }
+      case "國戰名單": {
+        const warList = await listUsers("國戰");
+        const leaveList = await listUsers("請假");
+        replyMsg = `📋 國戰名單\n\n🟩 國戰+1：\n${warList.map(n => "🔸 " + n).join("\n") || "（無）"}\n\n🟨 請假+1：\n${leaveList.map(n => "🔸 " + n).join("\n") || "（無）"}`;
+        break;
+      }
+      case "查ID": {
+        replyMsg = `👁️ 群組 ID：${groupId}`;
         break;
       }
     }
