@@ -28,11 +28,11 @@ async function replyToLine(replyToken, msg) {
 
 // 快速回應 webhook，避免 timeout
 app.post("/webhook", (req, res) => {
-  res.send("OK"); // 回給 LINE，代表收到
-
+  console.log("📩 Webhook received");
+  res.send("OK");
+  
   const event = req.body.events?.[0];
   if (!event || event.type !== "message") return;
-
   handleEvent(event).catch(console.error);
 });
 
