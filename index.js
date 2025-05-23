@@ -7,7 +7,7 @@ const app = express();
 app.use(bodyParser.json());
 
 const LINE_TOKEN = process.env.LINE_TOKEN;
-const ALLOWED_GROUP_ID = process.env.ALLOWED_GROUP_ID;
+
 
 // 根目錄測試 route，讓 Railway 檢查容器是否活著
 app.get("/", (req, res) => {
