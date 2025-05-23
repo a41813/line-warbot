@@ -44,7 +44,8 @@ async function handleEvent(event) {
 
   if (!replyToken || groupId !== ALLOWED_GROUP_ID) return;
 
-  const displayName = userId; // （之後升級 B 再抓暱稱）
+const displayName = await getDisplayName(userId);
+
   let replyMsg = "";
 
   switch (message.text) {
@@ -69,6 +70,20 @@ async function handleEvent(event) {
 
   if (replyMsg) {
     await replyToLine(replyToken, replyMsg);
+  }
+}
+
+async function getDisplayName(userId) {
+  try {
+    const res = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${LINE_TOKEN}`,
+      },
+    });
+    return res.data.displayName || userId;
+  } catch (err) {
+    console.error("抓暱稱失敗，使用 userId 當替代");
+    return userId; // 如果抓不到暱稱就回傳原本 ID
   }
 }
 
