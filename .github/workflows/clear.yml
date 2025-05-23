@@ -1,0 +1,13 @@
+name: Daily Clear
+
+on:
+  schedule:
+    - cron: '0 14 * * *' # 每天 UTC 14:00 → 台灣時間 22:00
+  workflow_dispatch:
+
+jobs:
+  clear:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 執行清空
+        run: curl -X GET https://line-warbot-production.up.railway.app/clear
