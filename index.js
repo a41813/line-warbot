@@ -33,8 +33,6 @@ app.post("/webhook", async (req, res) => {
   const userId = event.source.userId;
   const groupId = event.source.groupId || "";
 
-  //if (groupId !== ALLOWED_GROUP_ID) return res.send("Group not allowed");
-
   const message = event.message.text;
   let replyMsg = "";
 
