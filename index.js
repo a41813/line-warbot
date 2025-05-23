@@ -7,64 +7,68 @@ const app = express();
 app.use(bodyParser.json());
 
 const LINE_TOKEN = process.env.LINE_TOKEN;
+const ALLOWED_GROUP_IDS = [
+  "Cb22ae72338bf583aae36dfe420d90a7d",
+  "Cac52c4b3e6dabd77d9260668950ea31c"
+];
 
-// 🔧 提供檢查用首頁，避免 Railway 誤砍容器
+// 預設根目錄（檢查用）
 app.get("/", (req, res) => {
   res.send("Hello from LINE Warbot!");
 });
 
-// ✅ 清空名單
+// 清空名單
 app.get("/clear", async (req, res) => {
   await clearAllSheets();
   res.send("清空完成 ✅");
 });
 
-// ✅ 快速回應 webhook，避免 LINE timeout
+// LINE webhook 接收
 app.post("/webhook", (req, res) => {
   console.log("📩 Webhook received");
-  res.send("OK"); // 先快速回應 LINE
+  res.send("OK");
 
   const event = req.body.events?.[0];
   if (!event || event.type !== "message") return;
-
   handleEvent(event).catch(console.error);
 });
 
-// ✅ 主邏輯處理（支援所有群組，無限制）
+// 事件處理
 async function handleEvent(event) {
   const { replyToken, message, source } = event;
   const groupId = source.groupId || "";
   const userId = source.userId;
 
-  if (!replyToken) return;
+  // ✅ 群組白名單限制
+  if (!replyToken || !ALLOWED_GROUP_IDS.includes(groupId)) return;
 
   const displayName = await getDisplayName(userId);
   let replyMsg = "";
 
   switch (message.text) {
-    case "國戰+1":
-      await addUser("國戰", displayName);
-      replyMsg = `✅ ${displayName} 已加入國戰`;
+    case "國戰+1": {
+      const result = await addUser("國戰", displayName);
+      replyMsg = result.success
+        ? `✅ ${displayName} 已加入國戰`
+        : `⚠️ ${displayName} ${result.reason}`;
       break;
-
-    case "請假+1":
-      await addUser("請假", displayName);
-      replyMsg = `✅ ${displayName} 已請假`;
+    }
+    case "請假+1": {
+      const result = await addUser("請假", displayName);
+      replyMsg = result.success
+        ? `✅ ${displayName} 已請假`
+        : `⚠️ ${displayName} ${result.reason}`;
       break;
-
+    }
     case "國戰名單": {
       const warList = await listUsers("國戰");
       const leaveList = await listUsers("請假");
       replyMsg = `📋 國戰名單\n\n🟩 國戰+1：\n${warList.map(n => "🔸 " + n).join("\n") || "（無）"}\n\n🟨 請假+1：\n${leaveList.map(n => "🔸 " + n).join("\n") || "（無）"}`;
       break;
     }
-
     case "查ID":
       replyMsg = `👁️ 群組 ID：${groupId}`;
       break;
-
-    default:
-      replyMsg = ""; // 不處理其他訊息
   }
 
   if (replyMsg) {
@@ -72,7 +76,7 @@ async function handleEvent(event) {
   }
 }
 
-// ✅ 使用 LINE API 抓取暱稱
+// 顯示暱稱（失敗時回傳提醒）
 async function getDisplayName(userId) {
   try {
     const res = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
@@ -82,12 +86,12 @@ async function getDisplayName(userId) {
     });
     return res.data.displayName || userId;
   } catch (err) {
-    console.error("❌ 抓暱稱失敗，使用 userId 當替代");
-    return userId;
+    console.error("❌ 無法取得使用者暱稱：", err.message);
+    return `❗ 請先私訊 bot 啟用暱稱功能（ID: ${userId}）`;
   }
 }
 
-// ✅ 發送訊息到 LINE
+// 傳送 LINE 訊息
 async function replyToLine(replyToken, msg) {
   await axios.post(
     "https://api.line.me/v2/bot/message/reply",
@@ -104,7 +108,7 @@ async function replyToLine(replyToken, msg) {
   );
 }
 
-// ✅ 啟動伺服器
+// 啟動伺服器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Bot running on port ${PORT}`);
