@@ -49,4 +49,7 @@ async function clearAllSheets() {
 }
 
 
-module.exports = { addUser, listUsers, clearSheet };
+module.exports = {
+  addUser,
+  listUsers,
+  clearAllSheets };
