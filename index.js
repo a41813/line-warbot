@@ -87,7 +87,7 @@ async function getDisplayName(userId) {
     return res.data.displayName || userId;
   } catch (err) {
     console.error("❌ 無法取得使用者暱稱：", err.message);
-    return `❗ 請先私訊 bot 啟用暱稱功能（ID: ${userId}）`;
+    return `❗ 請先私訊 LeoGPT 啟用暱稱功能 👇\nhttps://line.me/R/ti/p/@484cdicd\n（ID: ${userId}）`;
   }
 }
 
