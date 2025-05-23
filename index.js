@@ -45,19 +45,24 @@ async function handleEvent(event) {
 
   let replyMsg = "";
 
-  // 支援國戰+1 ~ 國戰+12
   if (/^國戰\+\d+$/.test(message.text)) {
-    const count = parseInt(message.text.match(/^國戰\+(\d+)$/)[1], 10);
+    const match = message.text.match(/^國戰\+(\d+)$/);
+    const count = parseInt(match[1], 10);
+
     if (count >= 1 && count <= 12) {
-      let added = 0;
-      for (let i = 1; i <= count; i++) {
-        const suffix = i === 1 ? "" : ` (${i})`;
-        const result = await addUser("國戰", nameToSave + suffix);
-        if (result.success) added++;
+      const formattedName = count === 1 ? nameToSave : `${nameToSave}(${count})`;
+      const warList = await listUsers("國戰");
+
+      if (warList.includes(formattedName)) {
+        replyMsg = `⚠️ ${formattedName} 已報名過`;
+      } else {
+        const result = await addUser("國戰", formattedName);
+        replyMsg = result.success
+          ? `✅ ${nameToShow} 已加入國戰（共 ${count} 名）`
+          : `⚠️ ${nameToShow} ${result.reason}`;
       }
-      replyMsg = `✅ ${nameToShow} 已加入國戰（共 ${added} 名）`;
     } else {
-      replyMsg = `⚠️ 報名數量需介於 1~12 之間`;
+      replyMsg = "⚠️ 報名數量需介於 1~12 之間";
     }
   } else {
     switch (message.text) {
