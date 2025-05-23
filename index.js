@@ -1,3 +1,4 @@
+const { addUser, listUsers } = require("./sheets");
 const express = require("express");
 const axios = require("axios");
 const bodyParser = require("body-parser");
@@ -37,20 +38,31 @@ app.post("/webhook", async (req, res) => {
   const message = event.message.text;
   let replyMsg = "";
 
-  switch (message) {
-    case "國戰+1":
-      replyMsg = `✅ ${userId} 已加入國戰（測試用）`;
-      break;
-    case "請假+1":
-      replyMsg = `✅ ${userId} 已請假（測試用）`;
-      break;
-    case "查ID":
-      replyMsg = `👁️ 群組 ID：${groupId}`;
-      break;
-    default:
-      replyMsg = "";
+switch (message.text) {
+  case "國戰+1":
+    await addUser("國戰", displayName);
+    replyMsg = `✅ ${displayName} 已加入國戰`;
+    break;
+
+  case "請假+1":
+    await addUser("請假", displayName);
+    replyMsg = `✅ ${displayName} 已請假`;
+    break;
+
+  case "國戰名單": {
+    const warList = await listUsers("國戰");
+    const leaveList = await listUsers("請假");
+    replyMsg = `📋 國戰名單\n\n🟩 國戰+1：\n${warList.map(n => `🔸 ${n}`).join("\n") || "（無）"}\n\n🟨 請假+1：\n${leaveList.map(n => `🔸 ${n}`).join("\n") || "（無）"}`;
+    break;
   }
 
+  case "查ID":
+    replyMsg = `👁️ 群組 ID：${groupId}`;
+    break;
+
+  default:
+    replyMsg = "";
+}
   if (replyMsg) {
     await replyToLine(replyToken, replyMsg);
   }
