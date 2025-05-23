@@ -9,6 +9,10 @@ app.use(bodyParser.json());
 const LINE_TOKEN = process.env.LINE_TOKEN;
 const ALLOWED_GROUP_ID = process.env.ALLOWED_GROUP_ID;
 
+app.get("/", (req, res) => {
+  res.send("Hello from LINE Warbot!");
+});
+
 async function replyToLine(replyToken, msg) {
   await axios.post(
     "https://api.line.me/v2/bot/message/reply",
