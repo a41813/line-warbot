@@ -64,3 +64,15 @@ async function handleEvent(event) {
     }
     case "查ID":
       replyMsg = `👁️ 群組 ID：${groupId}`;
+      break;
+  }
+
+  if (replyMsg) {
+    await replyToLine(replyToken, replyMsg);
+  }
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Bot running on port ${PORT}`);
+});
