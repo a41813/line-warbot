@@ -12,18 +12,15 @@ const ALLOWED_GROUP_IDS = [
   "Cac52c4b3e6dabd77d9260668950ea31c"
 ];
 
-// 預設根目錄（檢查用）
 app.get("/", (req, res) => {
   res.send("Hello from LINE Warbot!");
 });
 
-// 清空名單
 app.get("/clear", async (req, res) => {
   await clearAllSheets();
   res.send("清空完成 ✅");
 });
 
-// LINE webhook 接收
 app.post("/webhook", (req, res) => {
   console.log("📩 Webhook received");
   res.send("OK");
@@ -33,31 +30,34 @@ app.post("/webhook", (req, res) => {
   handleEvent(event).catch(console.error);
 });
 
-// 事件處理
 async function handleEvent(event) {
   const { replyToken, message, source } = event;
   const groupId = source.groupId || "";
   const userId = source.userId;
 
-  // ✅ 群組白名單限制
   if (!replyToken || !ALLOWED_GROUP_IDS.includes(groupId)) return;
 
-  const displayName = await getDisplayName(userId);
+  const nameResult = await getDisplayName(userId);
+  const nameToSave = nameResult.name;
+  const nameToShow = nameResult.error
+    ? `❗ 請先私訊 LeoGPT 啟用暱稱功能 👇\nhttps://line.me/R/ti/p/@484cdicd\n（ID: ${userId}）`
+    : nameResult.name;
+
   let replyMsg = "";
 
   switch (message.text) {
     case "國戰+1": {
-      const result = await addUser("國戰", displayName);
+      const result = await addUser("國戰", nameToSave);
       replyMsg = result.success
-        ? `✅ ${displayName} 已加入國戰`
-        : `⚠️ ${displayName} ${result.reason}`;
+        ? `✅ ${nameToShow} 已加入國戰`
+        : `⚠️ ${nameToShow} ${result.reason}`;
       break;
     }
     case "請假+1": {
-      const result = await addUser("請假", displayName);
+      const result = await addUser("請假", nameToSave);
       replyMsg = result.success
-        ? `✅ ${displayName} 已請假`
-        : `⚠️ ${displayName} ${result.reason}`;
+        ? `✅ ${nameToShow} 已請假`
+        : `⚠️ ${nameToShow} ${result.reason}`;
       break;
     }
     case "國戰名單": {
@@ -76,7 +76,6 @@ async function handleEvent(event) {
   }
 }
 
-// 顯示暱稱（失敗時回傳提醒）
 async function getDisplayName(userId) {
   try {
     const res = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
@@ -84,14 +83,19 @@ async function getDisplayName(userId) {
         Authorization: `Bearer ${LINE_TOKEN}`,
       },
     });
-    return res.data.displayName || userId;
+    return {
+      name: res.data.displayName || userId,
+      error: false
+    };
   } catch (err) {
     console.error("❌ 無法取得使用者暱稱：", err.message);
-    return `❗ 請先私訊 LeoGPT 啟用暱稱功能 👇\nhttps://line.me/R/ti/p/@484cdicd\n（ID: ${userId}）`;
+    return {
+      name: userId,
+      error: true
+    };
   }
 }
 
-// 傳送 LINE 訊息
 async function replyToLine(replyToken, msg) {
   await axios.post(
     "https://api.line.me/v2/bot/message/reply",
@@ -108,7 +112,6 @@ async function replyToLine(replyToken, msg) {
   );
 }
 
-// 啟動伺服器
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Bot running on port ${PORT}`);
