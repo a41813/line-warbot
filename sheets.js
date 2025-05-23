@@ -77,8 +77,33 @@ async function clearAllSheets() {
   }
 }
 
+// 🔧 修正刪除：支援 LEO(1) 的情況，只要開頭是 LEO(
+async function removeUserAll(sheetName, name) {
+  const sheets = await getClient();
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:A`,
+  });
+
+  const rows = res.data.values || [];
+  const newRows = rows.filter(row => !row[0]?.startsWith(name + "("));
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `${sheetName}!A:A`,
+    valueInputOption: "RAW",
+    requestBody: {
+      values: newRows,
+    },
+  });
+
+  return rows.length !== newRows.length;
+}
+
 module.exports = {
   addUser,
   listUsers,
   clearAllSheets,
+  removeUserAll, // 👈 別忘了匯出
 };
