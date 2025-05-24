@@ -12,7 +12,6 @@ const ALLOWED_GROUP_IDS = [
   "Cac52c4b3e6dabd77d9260668950ea31c"
 ];
 
-// ✅ 全域鎖定機制
 let sheetLock = false;
 function withSheetLock(asyncFn) {
   return async (...args) => {
@@ -121,7 +120,7 @@ async function handleEvent(event) {
         case "國戰名單": {
           const warList = await listUsers("國戰");
           const leaveList = await listUsers("請假");
-          replyMsg = `📋 國戰名單\n\n🟩 國戰+1：\n${warList.map(n => "🔸 " + n).join("\n") || "（無）"}\n\n🟨 請假+1：\n${leaveList.map(n => "🔸 " + n).join("\n") || "（無）"}`;
+          replyMsg = `國戰: \n${warList.join("\n") || "（無）"}\n\n請假: \n${leaveList.join("\n") || "（無）"}`;
           break;
         }
         case "查ID": {
