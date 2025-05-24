@@ -77,9 +77,10 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 精準開頭比對版：Leo( 開頭才砍
+// ✅ 根據名單類型使用不同刪除邏輯
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
+
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:A`,
@@ -87,15 +88,16 @@ async function removeUserAll(sheetName, name) {
 
   const rows = res.data.values || [];
   const originalLength = rows.length;
+  const target = name.trim().toLowerCase();
 
-  const keyword = name.trim().toLowerCase() + "(";
-
-  console.log(`🔍 精準刪除 "${name}" 開頭資料（範例格式：${keyword}X）`);
-  console.log("📋 原始名單：", rows.map(r => r[0]));
+  console.log(`🔍 嘗試刪除 "${target}" 在 ${sheetName} 中`);
 
   const newRows = rows.filter(row => {
-    const raw = (row?.[0] || "").trim().toLowerCase();
-    const isMatch = raw.startsWith(keyword);
+    const cell = (row?.[0] || "").trim().toLowerCase();
+
+    const isMatch = sheetName === "國戰"
+      ? cell.startsWith(target + "(")
+      : cell === target;
 
     if (isMatch) {
       console.log(`🧽 移除中：${row[0]}`);
@@ -104,7 +106,6 @@ async function removeUserAll(sheetName, name) {
     return !isMatch;
   });
 
-  // 清空欄位再重建名單
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:A`,
