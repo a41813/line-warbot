@@ -77,7 +77,7 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 終極版：強制使用 clear + append 重建名單
+// ✅ 精準開頭比對版：Leo( 開頭才砍
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
   const res = await sheets.spreadsheets.values.get({
@@ -88,23 +88,23 @@ async function removeUserAll(sheetName, name) {
   const rows = res.data.values || [];
   const originalLength = rows.length;
 
-  const keyword = name.trim().toLowerCase();
+  const keyword = name.trim().toLowerCase() + "(";
 
-  console.log(`🔍 嘗試刪除含有關鍵字 "${keyword}" 的所有資料`);
+  console.log(`🔍 精準刪除 "${name}" 開頭資料（範例格式：${keyword}X）`);
   console.log("📋 原始名單：", rows.map(r => r[0]));
 
   const newRows = rows.filter(row => {
     const raw = (row?.[0] || "").trim().toLowerCase();
-    const isMatch = raw.includes(keyword);
+    const isMatch = raw.startsWith(keyword);
 
     if (isMatch) {
-      console.log(`🧽 強制移除：${row[0]}`);
+      console.log(`🧽 移除中：${row[0]}`);
     }
 
     return !isMatch;
   });
 
-  // ✨ 重點：先 clear 再 append，保證更新
+  // 清空欄位再重建名單
   await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:A`,
