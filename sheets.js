@@ -77,31 +77,37 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 修正版：移除與使用者名稱相關的資料（不分大小寫、去除空白）
+// ✅ 超強 debug + 防大小寫比對版
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
-
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:A`,
   });
 
   const rows = res.data.values || [];
+  const originalLength = rows.length;
 
   const targetPrefix = name.trim().toLowerCase() + "(";
 
-  console.log("📋 原始名單：", rows.map(r => r[0]));
+  console.log(`🔍 開始嘗試刪除：${name}`);
+  console.log("📋 目前名單：", rows.map(r => r[0]));
 
   const newRows = rows.filter(row => {
-    const cell = (row?.[0] || "").trim().toLowerCase();
-    const isMatch = cell.startsWith(targetPrefix);
+    const rawValue = row?.[0] || "";
+    const cleanValue = rawValue.trim().toLowerCase();
+    const isMatch = cleanValue.startsWith(targetPrefix);
+
+    console.log(`👉 檢查：${rawValue} ➜ ${cleanValue} 是否以 ${targetPrefix} 開頭？結果：${isMatch}`);
+
     if (isMatch) {
-      console.log(`🧽 移除中：${row[0]}`);
+      console.log(`🧽 移除中：${rawValue}`);
     }
+
     return !isMatch;
   });
 
-  console.log("✅ 新名單：", newRows.map(r => r[0]));
+  console.log("✅ 篩選後名單：", newRows.map(r => r[0]));
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
@@ -112,7 +118,9 @@ async function removeUserAll(sheetName, name) {
     },
   });
 
-  return rows.length !== newRows.length;
+  const changed = originalLength !== newRows.length;
+  console.log(`⚠️ 是否成功刪除？${changed}`);
+  return changed;
 }
 
 module.exports = {
