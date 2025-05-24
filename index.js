@@ -63,9 +63,14 @@ async function handleEvent(event) {
 
   let replyMsg = "";
 
-  if (/^國戰\+\d+$/.test(message.text)) {
+  // ✅ 支援簡體指令轉換
+  const text = message.text.replace("国战", "國戰")
+                           .replace("请假", "請假")
+                           .replace("名单", "名單");
+
+  if (/^國戰\+\d+$/.test(text)) {
     await withSheetLock(async () => {
-      const match = message.text.match(/^國戰\+(\d+)$/);
+      const match = text.match(/^國戰\+(\d+)$/);
       const count = parseInt(match[1], 10);
 
       if (count < 1 || count > 12) {
@@ -91,7 +96,7 @@ async function handleEvent(event) {
     })();
   } else {
     await withSheetLock(async () => {
-      switch (message.text) {
+      switch (text) {
         case "請假+1": {
           if (nameResult.error) {
             replyMsg = nameToShow;
