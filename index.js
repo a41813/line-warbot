@@ -1,6 +1,19 @@
-// ✅ 簡易全域鎖定機制（請放在 index.js 最上面）
-let sheetLock = false;
+const express = require("express");
+const axios = require("axios");
+const bodyParser = require("body-parser");
+const { addUser, listUsers, clearAllSheets, removeUserAll } = require("./sheets");
+const app = express();
 
+app.use(bodyParser.json());
+
+const LINE_TOKEN = process.env.LINE_TOKEN;
+const ALLOWED_GROUP_IDS = [
+  "Cb22ae72338bf583aae36dfe420d90a7d",
+  "Cac52c4b3e6dabd77d9260668950ea31c"
+];
+
+// ✅ 全域鎖定機制
+let sheetLock = false;
 function withSheetLock(asyncFn) {
   return async (...args) => {
     if (sheetLock) {
@@ -16,7 +29,9 @@ function withSheetLock(asyncFn) {
   };
 }
 
-// ✅ 用法：在所有會寫入 Google Sheet 的地方包裹這個鎖
+app.get("/", (req, res) => {
+  res.send("Hello from LINE Warbot!");
+});
 
 app.get("/clear", async (req, res) => {
   await withSheetLock(async () => {
@@ -121,3 +136,44 @@ async function handleEvent(event) {
     await replyToLine(replyToken, replyMsg);
   }
 }
+
+async function getDisplayName(userId) {
+  try {
+    const res = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
+      headers: {
+        Authorization: `Bearer ${LINE_TOKEN}`,
+      },
+    });
+    return {
+      name: res.data.displayName || userId,
+      error: false
+    };
+  } catch (err) {
+    console.error("❌ 無法取得使用者暱稱：", err.message);
+    return {
+      name: userId,
+      error: true
+    };
+  }
+}
+
+async function replyToLine(replyToken, msg) {
+  await axios.post(
+    "https://api.line.me/v2/bot/message/reply",
+    {
+      replyToken,
+      messages: [{ type: "text", text: msg }],
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${LINE_TOKEN}`,
+      },
+    }
+  );
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Bot running on port ${PORT}`);
+});
