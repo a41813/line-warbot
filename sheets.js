@@ -77,7 +77,7 @@ async function clearAllSheets() {
   }
 }
 
-// 🔧 修正刪除：支援 LEO(1) 的情況，只要開頭是 LEO(
+// ✅ 修正版：移除與使用者名稱相關的資料（不分大小寫）
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
 
@@ -87,7 +87,12 @@ async function removeUserAll(sheetName, name) {
   });
 
   const rows = res.data.values || [];
-  const newRows = rows.filter(row => !row[0]?.startsWith(name + "("));
+  const targetPrefix = name.toLowerCase() + "(";
+
+  const newRows = rows.filter(row => {
+    const cellValue = (row[0] || "").toLowerCase();
+    return !cellValue.startsWith(targetPrefix);
+  });
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
@@ -105,5 +110,5 @@ module.exports = {
   addUser,
   listUsers,
   clearAllSheets,
-  removeUserAll, // 👈 別忘了匯出
+  removeUserAll,
 };
