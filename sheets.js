@@ -77,7 +77,7 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 超強 debug + 防大小寫比對版
+// ✅ 終極版：強制使用 clear + append 重建名單
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
   const res = await sheets.spreadsheets.values.get({
@@ -88,37 +88,41 @@ async function removeUserAll(sheetName, name) {
   const rows = res.data.values || [];
   const originalLength = rows.length;
 
-  const targetPrefix = name.trim().toLowerCase() + "(";
+  const keyword = name.trim().toLowerCase();
 
-  console.log(`🔍 開始嘗試刪除：${name}`);
-  console.log("📋 目前名單：", rows.map(r => r[0]));
+  console.log(`🔍 嘗試刪除含有關鍵字 "${keyword}" 的所有資料`);
+  console.log("📋 原始名單：", rows.map(r => r[0]));
 
   const newRows = rows.filter(row => {
-    const rawValue = row?.[0] || "";
-    const cleanValue = rawValue.trim().toLowerCase();
-    const isMatch = cleanValue.startsWith(targetPrefix);
-
-    console.log(`👉 檢查：${rawValue} ➜ ${cleanValue} 是否以 ${targetPrefix} 開頭？結果：${isMatch}`);
+    const raw = (row?.[0] || "").trim().toLowerCase();
+    const isMatch = raw.includes(keyword);
 
     if (isMatch) {
-      console.log(`🧽 移除中：${rawValue}`);
+      console.log(`🧽 強制移除：${row[0]}`);
     }
 
     return !isMatch;
   });
 
-  console.log("✅ 篩選後名單：", newRows.map(r => r[0]));
-
-  await sheets.spreadsheets.values.update({
+  // ✨ 重點：先 clear 再 append，保證更新
+  await sheets.spreadsheets.values.clear({
     spreadsheetId: SPREADSHEET_ID,
     range: `${sheetName}!A:A`,
-    valueInputOption: "RAW",
-    requestBody: {
-      values: newRows,
-    },
   });
 
+  if (newRows.length > 0) {
+    await sheets.spreadsheets.values.append({
+      spreadsheetId: SPREADSHEET_ID,
+      range: `${sheetName}!A:A`,
+      valueInputOption: "RAW",
+      requestBody: {
+        values: newRows,
+      },
+    });
+  }
+
   const changed = originalLength !== newRows.length;
+  console.log("✅ 最終名單：", newRows.map(r => r[0]));
   console.log(`⚠️ 是否成功刪除？${changed}`);
   return changed;
 }
