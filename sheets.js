@@ -77,7 +77,7 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 修正版：移除與使用者名稱相關的資料（不分大小寫）
+// ✅ 修正版：移除與使用者名稱相關的資料（不分大小寫、去除空白）
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
 
@@ -87,12 +87,21 @@ async function removeUserAll(sheetName, name) {
   });
 
   const rows = res.data.values || [];
-  const targetPrefix = name.toLowerCase() + "(";
+
+  const targetPrefix = name.trim().toLowerCase() + "(";
+
+  console.log("📋 原始名單：", rows.map(r => r[0]));
 
   const newRows = rows.filter(row => {
-    const cellValue = (row[0] || "").toLowerCase();
-    return !cellValue.startsWith(targetPrefix);
+    const cell = (row?.[0] || "").trim().toLowerCase();
+    const isMatch = cell.startsWith(targetPrefix);
+    if (isMatch) {
+      console.log(`🧽 移除中：${row[0]}`);
+    }
+    return !isMatch;
   });
+
+  console.log("✅ 新名單：", newRows.map(r => r[0]));
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: SPREADSHEET_ID,
