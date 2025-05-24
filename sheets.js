@@ -38,7 +38,16 @@ async function addUser(sheetName, name) {
     return { success: false, reason: "已在名單中，不能重複報名" };
   }
 
-  if (otherList.includes(name)) {
+  // ✅ 加上格式差異的交叉比對：Leo vs Leo(5)
+  const nameLower = name.trim().toLowerCase();
+  const isDuplicate = otherList.some(entry => {
+    const entryLower = entry.trim().toLowerCase();
+    return sheetName === "國戰"
+      ? entryLower === nameLower // 國戰：比對完整 Leo(5)
+      : entryLower.startsWith(nameLower + "("); // 請假：Leo 比對 Leo(5)
+  });
+
+  if (isDuplicate) {
     return { success: false, reason: `已在 ${otherSheet} 名單中，請先取消` };
   }
 
@@ -77,7 +86,7 @@ async function clearAllSheets() {
   }
 }
 
-// ✅ 根據名單類型使用不同刪除邏輯
+// 根據名單類型使用不同刪除邏輯
 async function removeUserAll(sheetName, name) {
   const sheets = await getClient();
 
