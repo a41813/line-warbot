@@ -38,13 +38,12 @@ async function addUser(sheetName, name) {
     return { success: false, reason: "已在名單中，不能重複報名" };
   }
 
-  // ✅ 加上格式差異的交叉比對：Leo vs Leo(5)
   const nameLower = name.trim().toLowerCase();
   const isDuplicate = otherList.some(entry => {
     const entryLower = entry.trim().toLowerCase();
     return sheetName === "國戰"
-      ? entryLower === nameLower // 國戰：比對完整 Leo(5)
-      : entryLower.startsWith(nameLower + "("); // 請假：Leo 比對 Leo(5)
+      ? entryLower === nameLower
+      : entryLower.startsWith(nameLower + "(");
   });
 
   if (isDuplicate) {
@@ -99,19 +98,11 @@ async function removeUserAll(sheetName, name) {
   const originalLength = rows.length;
   const target = name.trim().toLowerCase();
 
-  console.log(`🔍 嘗試刪除 "${target}" 在 ${sheetName} 中`);
-
   const newRows = rows.filter(row => {
     const cell = (row?.[0] || "").trim().toLowerCase();
-
     const isMatch = sheetName === "國戰"
       ? cell.startsWith(target + "(")
       : cell === target;
-
-    if (isMatch) {
-      console.log(`🧽 移除中：${row[0]}`);
-    }
-
     return !isMatch;
   });
 
@@ -132,9 +123,24 @@ async function removeUserAll(sheetName, name) {
   }
 
   const changed = originalLength !== newRows.length;
-  console.log("✅ 最終名單：", newRows.map(r => r[0]));
-  console.log(`⚠️ 是否成功刪除？${changed}`);
   return changed;
+}
+
+// 取得遊戲名稱對照
+async function getGameNameFromLineName(lineName) {
+  const sheets = await getClient();
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: SPREADSHEET_ID,
+    range: `對照表!A:B`,
+  });
+  const rows = res.data.values || [];
+  const target = lineName.trim().toLowerCase();
+  for (const row of rows) {
+    if ((row[0] || '').trim().toLowerCase() === target) {
+      return row[1]?.trim() || lineName;
+    }
+  }
+  return null;
 }
 
 module.exports = {
@@ -142,4 +148,5 @@ module.exports = {
   listUsers,
   clearAllSheets,
   removeUserAll,
+  getGameNameFromLineName,
 };
