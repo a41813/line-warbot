@@ -1,7 +1,7 @@
 const express = require("express");
 const axios = require("axios");
 const bodyParser = require("body-parser");
-const { addUser, listUsers, clearAllSheets, removeUserAll } = require("./sheets");
+const { addUser, listUsers, clearAllSheets, removeUserAll, getGameNameFromLineName } = require("./sheets");
 const app = express();
 
 app.use(bodyParser.json());
@@ -57,13 +57,17 @@ async function handleEvent(event) {
 
   const nameResult = await getDisplayName(userId);
   const nameToSave = nameResult.name;
+
+  // ✅ 嘗試取得遊戲名稱
+  const gameName = await getGameNameFromLineName(nameToSave);
+  const displayName = gameName || nameToSave;
+
   const nameToShow = nameResult.error
     ? `❗ 請先私訊 LeoGPT 啟用暱稱功能 👇\nhttps://line.me/R/ti/p/@484cdicd\n（ID: ${userId}）`
-    : nameResult.name;
+    : displayName;
 
   let replyMsg = "";
 
-  // ✅ 支援簡體指令轉換
   const text = message.text.replace("国战", "國戰")
                            .replace("请假", "請假")
                            .replace("名单", "名單");
@@ -78,7 +82,7 @@ async function handleEvent(event) {
       } else if (nameResult.error) {
         replyMsg = nameToShow;
       } else {
-        const formattedName = `${nameToSave}(${count})`;
+        const formattedName = `${displayName}(${count})`;
         const warList = await listUsers("國戰");
         const leaveList = await listUsers("請假");
 
@@ -102,21 +106,21 @@ async function handleEvent(event) {
             replyMsg = nameToShow;
             break;
           }
-          const result = await addUser("請假", nameToSave);
+          const result = await addUser("請假", displayName);
           replyMsg = result.success
             ? `✅ ${nameToShow} 已請假`
             : `⚠️ ${nameToShow} ${result.reason}`;
           break;
         }
         case "國戰取消": {
-          const removed = await removeUserAll("國戰", nameToSave);
+          const removed = await removeUserAll("國戰", displayName);
           replyMsg = removed
             ? `🗑️ ${nameToShow} 的國戰紀錄已取消`
             : `⚠️ ${nameToShow} 沒有在國戰名單中`;
           break;
         }
         case "請假取消": {
-          const removed = await removeUserAll("請假", nameToSave);
+          const removed = await removeUserAll("請假", displayName);
           replyMsg = removed
             ? `🗑️ ${nameToShow} 的請假紀錄已取消`
             : `⚠️ ${nameToShow} 沒有在請假名單中`;
@@ -125,7 +129,8 @@ async function handleEvent(event) {
         case "國戰名單": {
           const warList = await listUsers("國戰");
           const leaveList = await listUsers("請假");
-          replyMsg = `國戰: \n${warList.join("\n") || "（無）"}\n\n請假: \n${leaveList.join("\n") || "（無）"}`;
+          const formatList = (list) => list.map(name => name.includes("(") && !name.startsWith("⭐") ? `⭐ ${name}` : name).join("\n") || "（無）";
+          replyMsg = `國戰: \n${formatList(warList)}\n\n請假: \n${formatList(leaveList)}`;
           break;
         }
         case "查ID": {
