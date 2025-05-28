@@ -55,6 +55,8 @@ async function handleEvent(event) {
 
   if (!replyToken || !ALLOWED_GROUP_IDS.includes(groupId)) return;
 
+  if (!message || typeof message.text !== 'string') return;
+
   const nameResult = await getDisplayName(userId);
   const nameToSave = nameResult.name;
 
@@ -129,7 +131,7 @@ async function handleEvent(event) {
         case "國戰名單": {
           const warList = await listUsers("國戰");
           const leaveList = await listUsers("請假");
-          const formatList = (list) => list.map(name => name.includes("(") && !name.startsWith("⭐") ? `⭐ ${name}` : name).join("\n") || "（無）";
+          const formatList = (list) => list.join("\n") || "（無）";
           replyMsg = `國戰: \n${formatList(warList)}\n\n請假: \n${formatList(leaveList)}`;
           break;
         }
