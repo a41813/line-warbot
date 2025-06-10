@@ -1,7 +1,13 @@
 const express = require("express");
 const axios = require("axios");
 const bodyParser = require("body-parser");
-const { addUser, listUsers, clearAllSheets, removeUserAll, getGameNameFromLineName } = require("./sheets");
+const {
+  addUser,
+  listUsers,
+  clearAllSheets,
+  removeUserAll,
+  getGameNameFromLineName,
+} = require("./sheets");
 const app = express();
 
 app.use(bodyParser.json());
@@ -54,50 +60,50 @@ async function handleEvent(event) {
   const userId = source.userId;
 
   if (!replyToken || !ALLOWED_GROUP_IDS.includes(groupId)) return;
-
   if (!message || typeof message.text !== 'string') return;
 
   const nameResult = await getDisplayName(userId);
   const nameToSave = nameResult.name;
-
-  // ✅ 嘗試取得遊戲名稱
   const gameName = await getGameNameFromLineName(nameToSave);
   const displayName = gameName || nameToSave;
-
   const nameToShow = nameResult.error
     ? `❗ 請先私訊 LeoGPT 啟用暱稱功能 👇\nhttps://line.me/R/ti/p/@484cdicd\n（ID: ${userId}）`
     : displayName;
 
   let replyMsg = "";
-
   const text = message.text.replace("国战", "國戰")
                            .replace("请假", "請假")
-                           .replace("名单", "名單");
+                           .replace("名单", "名單")
+                           .replace("进攻", "進攻");
 
-  if (/^國戰\+\d+$/.test(text)) {
+  if (/^(國戰|進攻)\+\d+$/.test(text)) {
     await withSheetLock(async () => {
-      const match = text.match(/^國戰\+(\d+)$/);
-      const count = parseInt(match[1], 10);
-
+      const [type, num] = text.split("+");
+      const count = parseInt(num, 10);
       if (count < 1 || count > 12) {
         replyMsg = "⚠️ 報名數量需介於 1~12 之間";
-      } else if (nameResult.error) {
+        return;
+      }
+      if (nameResult.error) {
         replyMsg = nameToShow;
-      } else {
-        const formattedName = `${displayName}(${count})`;
-        const warList = await listUsers("國戰");
-        const leaveList = await listUsers("請假");
+        return;
+      }
 
-        if (warList.includes(formattedName)) {
-          replyMsg = `⚠️ ${formattedName} 已在國戰名單中`;
-        } else if (leaveList.includes(formattedName)) {
-          replyMsg = `⚠️ ${formattedName} 已在請假名單中`;
-        } else {
-          const result = await addUser("國戰", formattedName);
-          replyMsg = result.success
-            ? `✅ ${nameToShow} 已加入國戰（共 ${count} 名）`
-            : `⚠️ ${nameToShow} ${result.reason}`;
-        }
+      const formattedName = `${displayName}(${count})`;
+      const currentList = await listUsers(type);
+      const otherLists = (await Promise.all(
+        ["國戰", "進攻", "請假"].filter(s => s !== type).map(listUsers)
+      )).flat();
+
+      if (currentList.includes(formattedName)) {
+        replyMsg = `⚠️ ${formattedName} 已在${type}名單中`;
+      } else if (otherLists.some(n => n.startsWith(displayName))) {
+        replyMsg = `⚠️ ${displayName} 已在其他名單中，請先取消`;
+      } else {
+        const result = await addUser(type, formattedName);
+        replyMsg = result.success
+          ? `✅ ${nameToShow} 已加入${type}（共 ${count} 名）`
+          : `⚠️ ${nameToShow} ${result.reason}`;
       }
     })();
   } else {
@@ -114,25 +120,24 @@ async function handleEvent(event) {
             : `⚠️ ${nameToShow} ${result.reason}`;
           break;
         }
-        case "國戰取消": {
-          const removed = await removeUserAll("國戰", displayName);
-          replyMsg = removed
-            ? `🗑️ ${nameToShow} 的國戰紀錄已取消`
-            : `⚠️ ${nameToShow} 沒有在國戰名單中`;
-          break;
-        }
+        case "國戰取消":
+        case "進攻取消":
         case "請假取消": {
-          const removed = await removeUserAll("請假", displayName);
+          const sheet = text.replace("取消", "");
+          const removed = await removeUserAll(sheet, displayName);
           replyMsg = removed
-            ? `🗑️ ${nameToShow} 的請假紀錄已取消`
-            : `⚠️ ${nameToShow} 沒有在請假名單中`;
+            ? `🗑️ ${nameToShow} 的${sheet}紀錄已取消`
+            : `⚠️ ${nameToShow} 沒有在${sheet}名單中`;
           break;
         }
         case "國戰名單": {
-          const warList = await listUsers("國戰");
-          const leaveList = await listUsers("請假");
-          const formatList = (list) => list.join("\n") || "（無）";
-          replyMsg = `國戰: \n${formatList(warList)}\n\n請假: \n${formatList(leaveList)}`;
+          const [warList, attackList, leaveList] = await Promise.all([
+            listUsers("國戰"),
+            listUsers("進攻"),
+            listUsers("請假")
+          ]);
+          const format = (label, list) => `${label}（${list.length}）:\n${list.join("\n") || "（無）"}`;
+          replyMsg = [format("國戰", warList), format("進攻", attackList), format("請假", leaveList)].join("\n\n");
           break;
         }
         case "查ID": {
@@ -151,20 +156,12 @@ async function handleEvent(event) {
 async function getDisplayName(userId) {
   try {
     const res = await axios.get(`https://api.line.me/v2/bot/profile/${userId}`, {
-      headers: {
-        Authorization: `Bearer ${LINE_TOKEN}`,
-      },
+      headers: { Authorization: `Bearer ${LINE_TOKEN}` },
     });
-    return {
-      name: res.data.displayName || userId,
-      error: false
-    };
+    return { name: res.data.displayName || userId, error: false };
   } catch (err) {
     console.error("❌ 無法取得使用者暱稱：", err.message);
-    return {
-      name: userId,
-      error: true
-    };
+    return { name: userId, error: true };
   }
 }
 
